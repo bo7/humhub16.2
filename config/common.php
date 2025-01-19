@@ -8,6 +8,19 @@ return [
             'password' => getenv('HUMHUB_DB_PASSWORD'),
             'charset' => 'utf8mb4',
         ],
+        'mailer' => [
+            'class' => 'yii\swiftmailer\Mailer',
+            'viewPath' => '@app/mail',
+            'useFileTransport' => false,
+            'transport' => [
+                'class' => 'Swift_SmtpTransport',
+                'host' => getenv('HUMHUB_MAILER_HOSTNAME'),
+                'username' => getenv('HUMHUB_MAILER_USERNAME'),
+                'password' => getenv('HUMHUB_MAILER_PASSWORD'),
+                'port' => getenv('HUMHUB_MAILER_PORT'),
+                'encryption' => getenv('HUMHUB_MAILER_ENCRYPTION'),
+            ],
+        ],
     ],
     'params' => [
         'installer' => [
