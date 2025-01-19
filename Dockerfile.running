@@ -1,0 +1,89 @@
+    # Use PHP 8.2 with Apache
+    FROM php:8.2-apache
+
+    # Install necessary dependencies
+    RUN apt-get update && apt-get install -y \
+        libpng-dev libjpeg-dev libfreetype6-dev \
+        libcurl4-openssl-dev libzip-dev libexif-dev libicu-dev libmagic-dev \
+        libonig-dev libxml2-dev \
+        libldap2-dev \
+        unzip git curl cron \
+        && rm -rf /var/lib/apt/lists/* \
+        && docker-php-ext-configure gd --with-freetype --with-jpeg \
+        && docker-php-ext-configure ldap \
+        && docker-php-ext-install -j$(nproc) \
+            pdo_mysql \
+            mysqli \
+            gd \
+            zip \
+            exif \
+            intl \
+            mbstring \
+            ldap \
+        && apt-get clean
+
+    # Install Composer
+    RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+    # Enable Apache modules
+    RUN a2enmod rewrite
+
+    # Set working directory
+    WORKDIR /var/www/html
+
+    # Download and extract latest HumHub from GitHub
+    RUN curl -L https://github.com/humhub/humhub/archive/refs/tags/v1.17.0.zip -o humhub.zip \
+        && unzip humhub.zip -d /var/www/html \
+        && mv /var/www/html/humhub-1.17.0/* /var/www/html/ \
+        && mv /var/www/html/humhub-1.17.0/.* /var/www/html/ 2>/dev/null || true \
+        && rmdir /var/www/html/humhub-1.17.0 \
+        && rm humhub.zip
+
+    # Install dependencies with Composer
+    RUN composer install --no-dev --no-progress --no-interaction
+
+    # Copy configuration files
+    COPY ./config/common.php /var/www/html/protected/config/common.php
+
+    # Set up permissions
+    RUN chown -R www-data:www-data /var/www/html \
+        && chmod -R 755 /var/www/html \
+        && chmod -R 775 /var/www/html/protected/runtime \
+        && chmod -R 775 /var/www/html/protected/config \
+        && chmod -R 775 /var/www/html/uploads \
+        && chmod -R 775 /var/www/html/protected/modules
+
+    # Configure Apache
+    RUN { \
+        echo 'ServerName humhub.local'; \
+        echo '<Directory /var/www/html/>'; \
+        echo '  Options Indexes FollowSymLinks'; \
+        echo '  AllowOverride All'; \
+        echo '  Require all granted'; \
+        echo '</Directory>'; \
+    } > /etc/apache2/conf-available/humhub.conf \
+        && a2enconf humhub
+
+    # Copy custom php.ini settings
+    COPY php.ini /usr/local/etc/php/
+
+    # Set up cron jobs for HumHub background tasks
+    RUN echo "* * * * * www-data php /var/www/html/protected/yii queue/run" > /etc/cron.d/humhub-cron \
+        && chmod 0644 /etc/cron.d/humhub-cron \
+        && crontab /etc/cron.d/humhub-cron
+
+    # Create volumes
+    VOLUME ["/var/www/html/uploads", "/var/www/html/protected/config", "/var/www/html/protected/modules"]
+
+    # Set environment variables
+    ENV PHP_POST_MAX_SIZE=16M
+    ENV PHP_UPLOAD_MAX_FILESIZE=10M
+    ENV PHP_MAX_EXECUTION_TIME=60
+    ENV PHP_MEMORY_LIMIT=512M
+    ENV PHP_TIMEZONE=UTC
+
+    # Expose Apache port
+    EXPOSE 80
+
+    # Start Apache and Cron in the background
+    CMD ["sh", "-c", "service cron start && apache2-foreground"]

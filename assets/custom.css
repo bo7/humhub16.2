@@ -1,0 +1,9 @@
+.topbar-brand img {
+    max-height: 50px;  /* Adjust this value */
+    width: auto;
+}
+
+#login-logo {
+    max-width: 300px;  /* Adjust this value */
+    margin: 0 auto;
+} 

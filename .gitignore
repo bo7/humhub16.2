@@ -1,0 +1,29 @@
+# Docker volumes
+data/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# PHP dependencies
+vendor/
+
+# Node modules
+node_modules/
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# HumHub specific
+/assets/logo*
+/protected/runtime/
+/protected/config/dynamic.php
+/uploads/
+*.bak 

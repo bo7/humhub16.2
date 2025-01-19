@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:3418:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - humhub_data:/var/www/html:ro
+    depends_on:
+      - php
+
+  php:
+    build: .
+    volumes:
+      - humhub_data:/var/www/html
+    environment:
+      - HUMHUB_DB_HOST=db
+      - HUMHUB_DB_NAME=${MYSQL_DATABASE}
+      - HUMHUB_DB_USERNAME=${MYSQL_USER}
+      - HUMHUB_DB_PASSWORD=${MYSQL_PASSWORD}
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-allowed-packet=128M
+      - --innodb-log-file-size=64M
+
+volumes:
+  humhub_data:
+  db_data: 
